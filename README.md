@@ -21,3 +21,6 @@ Dead simple chatbot app which leverages Amazon LEX using:
 ### Running the app
 
 Run `npm run dev`
+
+### Demo
+![image](https://i.imgur.com/jy8Og9p.gif)
