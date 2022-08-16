@@ -84,9 +84,7 @@
         chatMessages.value = []
         disableInput.value = false
         isFulfilled.value = false
-        setTimeout(() => {
-            chatInputRef.value.focus()
-        },50)
+        chatInputFocus()
     }
 
     const onSenderInputEntered = async () => {
