@@ -16,7 +16,7 @@ Dead simple chatbot app which leverages Amazon LEX using:
 - `AWS_SECRET_ACCESS_KEY`
 - `AWS_DEFAULT_REGION`
 3. Run `composer install && npm install`
-4. Run `php artisan migrate`
+4. Run `php artisan migrate && php artisan key:generate`
 
 ### Running the app
 
