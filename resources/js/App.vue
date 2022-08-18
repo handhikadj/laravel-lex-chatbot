@@ -70,6 +70,7 @@
 <script setup>
     import { onMounted, ref, watch } from "vue";
     import axios from "axios";
+    import { isUrl } from "./utils";
 
     const chatMessages = ref([])
     const senderInput = ref('')
@@ -205,7 +206,7 @@
 
     const runValidation = (senderInput) => {
         // contains link
-        if (/^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([\/\w .-]*)*\/?$/i.test(senderInput)) {
+        if (isUrl(senderInput)) {
             return true
         }
 
