@@ -2,7 +2,7 @@
   <div class="app-container flex justify-center min-h-screen">
     <div
       id="chat-parent-container"
-      class="container relative sm:my-10 2xl:my-52 shadow-xl rounded-lg p-5 pr-0"
+      class="container relative my-10 2xl:my-52 shadow-xl rounded-lg p-5 pr-0"
     >
       <div
         ref="chatContainerRef"
@@ -123,6 +123,7 @@
                 })
 
                 chatInputFocus()
+                scrollToBottom()
                 return
             }
 
