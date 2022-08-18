@@ -1,6 +1,9 @@
 <template>
   <div class="app-container flex justify-center min-h-screen">
-    <div class="container relative sm:my-10 2xl:my-52 shadow-xl rounded-lg p-5 pr-0">
+    <div
+      id="chat-parent-container"
+      class="container relative sm:my-10 2xl:my-52 shadow-xl rounded-lg p-5 pr-0"
+    >
       <div
         ref="chatContainerRef"
         class="chat-list overflow-auto"
@@ -20,8 +23,15 @@
             :key="chatMessage.date"
             class="chat-box break-all w-fit p-2"
             :class="[chatMessage.user, { 'self-end': chatMessage.user === 'sender' }]"
-            v-html="chatMessage.message"
-          />
+          >
+            <span
+              v-if="chatMessage.message === 'forbidden'"
+              class="text-red-400 italic"
+            >
+              Message not sent. Message contains invalid characters
+            </span>
+            <span v-else>{{ chatMessage.message }}</span>
+          </p>
           <p
             v-if="isLoadingInsertingConversation"
             class="text-gray-400 text-sm mt-2"
@@ -38,7 +48,10 @@
         </div>
       </div>
 
-      <div class="input-chat p-5">
+      <div
+        ref="inputChatContainerRef"
+        class="input-chat p-5"
+      >
         <div class="input-field relative">
           <input
             ref="chatInputRef"
@@ -62,8 +75,10 @@
     const senderInput = ref('')
 
     const chatContainerRef = ref(null)
+    const inputChatContainerRef = ref(null)
     const chatInputRef = ref(null)
 
+    const loadingInput = ref(false)
     const disableInput = ref(false)
     const isFulfilled = ref(false)
     const isLoadingInsertingConversation = ref(false)
@@ -77,70 +92,102 @@
     })
 
     onMounted(() => {
-        chatInputRef.value.focus()
+        startOver()
+
+        calculateChatListContainerHeight()
+        window.addEventListener('resize', calculateChatListContainerHeight)
     })
 
     const startOver = () => {
         chatMessages.value = []
         disableInput.value = false
         isFulfilled.value = false
+        localStorage.removeItem('conversation')
         chatInputFocus()
     }
 
     const onSenderInputEntered = async () => {
-        const senderInputValue = senderInput.value
-
         if (senderInput.value !== '') {
+
+            const senderInputValue = senderInput.value
+            loadingInput.value = true
+            senderInput.value = ''
+
+            if (runValidation(senderInputValue)) {
+                loadingInput.value = false
+
+                chatMessages.value.push({
+                    user: 'sender',
+                    message: 'forbidden',
+                    date: new Date().getTime()
+                })
+
+                chatInputFocus()
+                return
+            }
+
             chatMessages.value.push({
                 user: 'sender',
-                message: senderInput.value,
+                message: senderInputValue,
                 date: new Date().getTime()
             })
-            senderInput.value = ''
 
             storeMessageInLocalStorage(senderInputValue)
 
             chatInputFocus()
 
-            const { data } = await axios.post('/api/conversation/send-message', {
-                message: senderInputValue
-            })
-
-            if (data.status === 'Fulfilled') {
-                disableInput.value = true
-
-                chatMessages.value.push({
-                    user: 'recipient-bot',
-                    message: data.message,
-                    date: new Date().getTime()
-                })
-                storeMessageInLocalStorage(data.message)
-
-                isLoadingInsertingConversation.value = true
-
-                const response = await axios.post('/api/conversation', {
-                    messages: localStorage
-                        .getItem('conversation')
-                        .split('|')
-                        .filter(item => item !== '')
+            try {
+                const { data } = await axios.post('/api/conversation/send-message', {
+                    message: senderInputValue
                 })
 
-                isLoadingInsertingConversation.value = false
-                isFulfilled.value = true
-                localStorage.removeItem('conversation')
-            } else {
-                chatMessages.value.push({
-                    user: 'recipient-bot',
-                    message: data.message,
-                    date: new Date().getTime()
-                })
+                loadingInput.value = false
 
-                if (data.status !== 'Failed') {
+                if (data.status === 'Fulfilled') {
+                    disableInput.value = true
+
+                    chatMessages.value.push({
+                        user: 'recipient-bot',
+                        message: data.message,
+                        date: new Date().getTime()
+                    })
                     storeMessageInLocalStorage(data.message)
-                }
-            }
 
-            chatInputFocus()
+                    isLoadingInsertingConversation.value = true
+
+                    const response = await axios.post('/api/conversation', {
+                        messages: localStorage
+                            .getItem('conversation')
+                            .split('|')
+                            .filter(item => item !== '')
+                    })
+
+                    isLoadingInsertingConversation.value = false
+                    isFulfilled.value = true
+                    localStorage.removeItem('conversation')
+                } else {
+                    chatMessages.value.push({
+                        user: 'recipient-bot',
+                        message: data.message,
+                        date: new Date().getTime()
+                    })
+
+                    if (data.status !== 'Failed') {
+                        storeMessageInLocalStorage(data.message)
+                    }
+                }
+
+                chatInputFocus()
+            } catch (e) {
+                loadingInput.value = false
+
+                if (e.response.status === 422) {
+                    alert('Failed to send the message. The message contains invalid characters')
+                    return
+                }
+
+                alert('Server error')
+            }
         }
     }
 
@@ -153,6 +200,37 @@
         }
 
         localStorage.setItem('conversation', `${message}|`)
+    }
+
+    const runValidation = (senderInput) => {
+        // contains link
+        if (/^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([\/\w .-]*)*\/?$/i.test(senderInput)) {
+            return true
+        }
+
+        // contains html
+        if (/<[a-z/][\s\S]*>/i.test(senderInput)) {
+            return true
+        }
+
+        // contains spaces
+        return !(/^\S*$/u.test(senderInput));
+    }
+
+    const calculateChatListContainerHeight = () => {
+        const getContainerHeightString = window
+            .getComputedStyle(
+                document.getElementById('chat-parent-container'),
+                null
+            )
+            .getPropertyValue('height')
+
+        const getContainerHeight = Number(
+            getContainerHeightString.substring(0, getContainerHeightString.length - 2)
+        )
+        const inputChatContainerHeight = inputChatContainerRef.value.clientHeight
+
+        chatContainerRef.value.style.height = getContainerHeight - inputChatContainerHeight - 35 + 'px'
     }
 
     const chatInputFocus = () => {
@@ -175,8 +253,6 @@
         border: 1px solid rgb(203 213 225);
 
         .chat-list {
-            height: 600px;
-
             p.no-data {
                 opacity: .3;
             }
