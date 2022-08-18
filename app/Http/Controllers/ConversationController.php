@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\ConversationRequest;
 use App\Models\Conversation;
 use App\Services\AmazonLexChatBot;
 
 class ConversationController extends Controller
 {
-    public function sendMessage(ConversationRequest $request)
+    public function sendMessage()
     {
         $lexChatBot = new AmazonLexChatBot();
 

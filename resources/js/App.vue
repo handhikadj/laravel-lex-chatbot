@@ -28,7 +28,7 @@
               v-if="chatMessage.message === 'forbidden'"
               class="text-red-400 italic"
             >
-              Message not sent. Message contains invalid characters
+              Message not sent. Message contains invalid characters, for example HTML tags, whitespace, or URL
             </span>
             <span v-else>{{ chatMessage.message }}</span>
           </p>
@@ -84,8 +84,10 @@
     const isFulfilled = ref(false)
     const isLoadingInsertingConversation = ref(false)
 
-    watch(chatMessages.value, (value) => {
+    watch(chatMessages, (value) => {
         value.length && scrollToBottom()
+    }, {
+        deep: true
     })
 
     watch(isFulfilled, (value) => {
@@ -216,7 +218,7 @@
         }
 
         // contains spaces
-        return !(/^\S*$/u.test(senderInput));
+        return /\s/i.test(senderInput);
     }
 
     const calculateChatListContainerHeight = () => {

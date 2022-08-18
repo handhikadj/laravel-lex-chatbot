@@ -30,7 +30,6 @@ class ConversationRequest extends FormRequest
             'message' => [
                 'not_regex:/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/',
                 'without_spaces',
-                'contains_html',
             ],
         ];
     }
