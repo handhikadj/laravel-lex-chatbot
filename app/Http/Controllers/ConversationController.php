@@ -10,13 +10,13 @@ class ConversationController extends Controller
 {
     public function sendMessage(ConversationRequest $request)
     {
-        if (request()->bot_message_status) {
-            if (request()->bot_message_status == 'asking' && preg_match('/[\s]+/i', request()->message)) {
-                return response()->json([
-                    'message' => 'Message contains spaces are not allowed on this state'
-                ], 422);
-            }
-        }
+        // if (request()->bot_message_status) {
+        //     if (request()->bot_message_status == 'asking' && preg_match('/[\s]+/i', request()->message)) {
+        //         return response()->json([
+        //             'message' => 'Message contains spaces are not allowed on this state'
+        //         ], 422);
+        //     }
+        // }
 
         $lexChatBot = new AmazonLexChatBot();
 
