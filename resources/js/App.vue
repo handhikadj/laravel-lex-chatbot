@@ -25,10 +25,10 @@
             :class="[chatMessage.user, { 'self-end': chatMessage.user === 'sender' }]"
           >
             <span
-              v-if="chatMessage.message === 'forbidden'"
+              v-if="chatMessage.type === 'error'"
               class="text-red-400 italic"
             >
-              Message not sent. Message contains invalid characters, for example HTML tags, whitespace, or URL
+              {{ chatMessage.message }}
             </span>
             <span v-else>{{ chatMessage.message }}</span>
           </p>
@@ -70,7 +70,6 @@
 <script setup>
     import { onMounted, ref, watch } from "vue";
     import axios from "axios";
-    import { isUrl } from "./utils";
 
     const chatMessages = ref([])
     const senderInput = ref('')
@@ -83,6 +82,8 @@
     const disableInput = ref(false)
     const isFulfilled = ref(false)
     const isLoadingInsertingConversation = ref(false)
+
+    const botMessageStatus = ref(null)
 
     watch(chatMessages, (value) => {
         value.length && scrollToBottom()
@@ -97,6 +98,13 @@
     onMounted(() => {
         startOver()
 
+        window.addEventListener('online', () => {
+            disableInput.value = false
+        });
+        window.addEventListener('offline', () => {
+            disableInput.value = true
+        });
+
         calculateChatListContainerHeight()
         window.addEventListener('resize', calculateChatListContainerHeight)
     })
@@ -105,61 +113,60 @@
         chatMessages.value = []
         disableInput.value = false
         isFulfilled.value = false
+        botMessageStatus.value = null
         localStorage.removeItem('conversation')
         chatInputFocus()
     }
 
     const onSenderInputEntered = async () => {
         if (senderInput.value !== '') {
-
             const senderInputValue = senderInput.value
+
             loadingInput.value = true
             senderInput.value = ''
-
-            if (runValidation(senderInputValue)) {
-                loadingInput.value = false
-
-                chatMessages.value.push({
-                    user: 'sender',
-                    message: 'forbidden',
-                    date: new Date().getTime()
-                })
-
-                chatInputFocus()
-                scrollToBottom()
-                return
-            }
 
             chatMessages.value.push({
                 user: 'sender',
                 message: senderInputValue,
-                date: new Date().getTime()
+                date: new Date().getTime(),
+                type: 'success'
             })
 
-            storeMessageInLocalStorage(senderInputValue)
-
             chatInputFocus()
+            scrollToBottom()
 
             try {
                 const { data } = await axios.post('/api/conversation/send-message', {
-                    message: senderInputValue
+                    message: senderInputValue,
+                    bot_message_status: botMessageStatus.value
                 })
+
+                if (data.message === 'Please insert your first name' ||
+                    data.message === 'Please insert your last name' ||
+                    data.message === 'Please insert your email'
+                ) {
+                    botMessageStatus.value = 'asking'
+                }
+
+                storeMessageInLocalStorage(senderInputValue)
 
                 loadingInput.value = false
 
                 if (data.status === 'Fulfilled') {
+                    botMessageStatus.value = null
                     disableInput.value = true
 
                     chatMessages.value.push({
                         user: 'recipient-bot',
                         message: data.message,
-                        date: new Date().getTime()
+                        date: new Date().getTime(),
+                        type: 'success'
                     })
                     storeMessageInLocalStorage(data.message)
 
                     isLoadingInsertingConversation.value = true
 
-                    const response = await axios.post('/api/conversation', {
+                    await axios.post('/api/conversation', {
                         messages: localStorage
                             .getItem('conversation')
                             .split('|')
@@ -173,7 +180,8 @@
                     chatMessages.value.push({
                         user: 'recipient-bot',
                         message: data.message,
-                        date: new Date().getTime()
+                        date: new Date().getTime(),
+                        type: 'success'
                     })
 
                     if (data.status !== 'Failed') {
@@ -186,7 +194,11 @@
                 loadingInput.value = false
 
                 if (e.response.status === 422) {
-                    alert('Failed to send the message. The message contains invalid characters')
+                    chatMessages.value[chatMessages.value.length - 1].type = 'error'
+                    chatMessages.value[chatMessages.value.length - 1].message = e.response.data.message
+
+                    chatInputFocus()
+                    scrollToBottom()
                     return
                 }
 
@@ -204,21 +216,6 @@
         }
 
         localStorage.setItem('conversation', `${message}|`)
-    }
-
-    const runValidation = (senderInput) => {
-        // contains link
-        if (isUrl(senderInput)) {
-            return true
-        }
-
-        // contains html
-        if (/<[a-z/][\s\S]*>/i.test(senderInput)) {
-            return true
-        }
-
-        // contains spaces
-        return /\s/i.test(senderInput);
     }
 
     const calculateChatListContainerHeight = () => {

@@ -28,20 +28,26 @@ class ConversationRequest extends FormRequest
 
         return [
             'message' => [
-                'not_regex:/^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/',
-                'without_spaces',
+                'contains_url',
+                'contains_html',
             ],
         ];
     }
 
     public function extendValidation()
     {
-        Validator::extend('contains_html', function ($attr, $value) {
-            return $value == strip_tags($value);
-        });
+        $message = 'Message contains characters or words that are not allowed';
 
-        Validator::extend('without_spaces', function ($attr, $value) {
-            return preg_match('/^\S*$/u', $value);
-        });
+        Validator::extend(
+            'contains_url',
+            fn ($attr, $value) => !preg_match('/\b(https?|ftp|file):\/\/[-A-Za-z0-9+&@#\\/%?=~_|!:,.;]*[-A-Za-z0-9+&@#\\/%=~_|]/i', $value),
+            $message
+        );
+
+        Validator::extend(
+            'contains_html',
+            fn ($attr, $value) => $value == strip_tags($value),
+            $message
+        );
     }
 }
