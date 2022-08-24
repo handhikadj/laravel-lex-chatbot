@@ -83,8 +83,6 @@
     const isFulfilled = ref(false)
     const isLoadingInsertingConversation = ref(false)
 
-    const botMessageStatus = ref(null)
-
     watch(chatMessages, (value) => {
         value.length && scrollToBottom()
     }, {
@@ -113,7 +111,6 @@
         chatMessages.value = []
         disableInput.value = false
         isFulfilled.value = false
-        botMessageStatus.value = null
         localStorage.removeItem('conversation')
         chatInputFocus()
     }
@@ -137,23 +134,14 @@
 
             try {
                 const { data } = await axios.post('/api/conversation/send-message', {
-                    message: senderInputValue,
-                    bot_message_status: botMessageStatus.value
+                    message: senderInputValue
                 })
-
-                if (data.message === 'Please insert your first name' ||
-                    data.message === 'Please insert your last name' ||
-                    data.message === 'Please insert your email'
-                ) {
-                    botMessageStatus.value = 'asking'
-                }
 
                 storeMessageInLocalStorage(senderInputValue)
 
                 loadingInput.value = false
 
                 if (data.status === 'Fulfilled') {
-                    botMessageStatus.value = null
                     disableInput.value = true
 
                     chatMessages.value.push({
