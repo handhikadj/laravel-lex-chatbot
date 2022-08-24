@@ -26,15 +26,28 @@ class ConversationRequest extends FormRequest
     {
         $this->extendValidation();
 
+        $validationRules = [
+            'contains_url',
+            'contains_html',
+        ];
+
+        if (request()->bot_message_status && request()->bot_message_status == 'asking-email') {
+            $validationRules[] = 'email';
+        }
+
         return [
-            'message' => [
-                'contains_url',
-                'contains_html',
-            ],
+            'message' => $validationRules,
         ];
     }
 
-    public function extendValidation()
+    public function messages()
+    {
+        return [
+            'message.email' => 'The message must be a valid email address. The email address may contain space(s) which is not allowed'
+        ];
+    }
+
+    private function extendValidation()
     {
         $message = 'Message contains characters or words that are not allowed';
 
